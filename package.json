@@ -1,0 +1,24 @@
+{
+  "name": "visualtesting",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "capture": "node capture.js",
+    "compare": "node --experimental-modules compare.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fs-extra": "^11.2.0",
+    "pixelmatch": "^6.0.0",
+    "puppeteer": "^23.3.0",
+    "resemblejs": "^5.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "type": "module"
+}
