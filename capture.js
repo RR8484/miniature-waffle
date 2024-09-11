@@ -2,52 +2,68 @@ import puppeteer from 'puppeteer';
 import fs from 'fs/promises';
 import path from 'path';
 
-async function captureFullPageScreenshot() {
+const viewportWidth = 1920;
+const viewportHeight = 1080;
+
+// Configuration object for pages to test
+const pagesToTest = [
+  { name: 'home', url: 'https://creditcardgenius.ca' },
+  { name: 'about', url: 'https://creditcardgenius.ca/about' },
+  { name: 'offers', url: 'https://creditcardgenius.ca/offers' },
+  { name: 'compare', url: 'https://creditcardgenius.ca/credit-cards' },
+  { name: 'contact', url: 'https://creditcardgenius.ca/contact' },
+  { name: 'blog', url: 'https://creditcardgenius.ca/blog' },
+  { name: 'faq', url: 'https://creditcardgenius.ca/faq' },
+  { name: 'terms', url: 'https://creditcardgenius.ca/terms' },
+  { name: 'privacy', url: 'https://creditcardgenius.ca/privacy' },
+  { name: 'credit-score', url: 'https://creditcardgenius.ca/blog/credit-score-canada'}
+];
+
+async function captureScreenshot(url, filePath) {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   
-  await page.goto('https://creditcardgenius.ca', { waitUntil: 'networkidle0' });
-
-  // Set viewport to a large size
-  await page.setViewport({ width: 1920, height: 1080 });
-
-  // Get the full height of the page
-  const bodyHandle = await page.$('body');
-  const { height } = await bodyHandle.boundingBox();
-  await bodyHandle.dispose();
+  await page.setViewport({ width: viewportWidth, height: viewportHeight });
+  await page.goto(url, { waitUntil: 'networkidle0' });
 
   // Scroll through the page to trigger lazy loading
-  const viewportHeight = page.viewport().height;
-  let viewportIncr = 0;
-  while (viewportIncr + viewportHeight < height) {
-    await page.evaluate(_viewportHeight => {
-      window.scrollBy(0, _viewportHeight);
-    }, viewportHeight);
-    
-    // Replace waitForTimeout with a delay using evaluate
-    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 200)));
-    
-    viewportIncr = viewportIncr + viewportHeight;
-  }
+  await page.evaluate(async () => {
+    await new Promise((resolve) => {
+      let totalHeight = 0;
+      const distance = 100;
+      const timer = setInterval(() => {
+        const scrollHeight = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        totalHeight += distance;
+        if(totalHeight >= scrollHeight){
+          clearInterval(timer);
+          resolve();
+        }
+      }, 100);
+    });
+  });
 
   // Scroll back to top
   await page.evaluate(_ => {
     window.scrollTo(0, 0);
   });
 
-  // Ensure baseline folder exists
-  const baselineFolder = 'baseline';
-  await fs.mkdir(baselineFolder, { recursive: true });
-
-  // Take the full page screenshot and save in baseline folder
-  const screenshotPath = path.join(baselineFolder, 'screenshot1.png');
-  await page.screenshot({
-    path: screenshotPath,
-    fullPage: true
-  });
-
+  await page.screenshot({ path: filePath, fullPage: true });
   await browser.close();
-  console.log(`Full page screenshot captured: ${screenshotPath}`);
+  console.log(`Screenshot captured: ${filePath}`);
 }
 
-captureFullPageScreenshot();
+async function captureBaselines() {
+  const baselineFolder = 'baseline';
+
+  // Ensure baseline folder exists
+  await fs.mkdir(baselineFolder, { recursive: true });
+
+  for (const page of pagesToTest) {
+    const baselineScreenshotPath = path.join(baselineFolder, `${page.name}.png`);
+    await captureScreenshot(page.url, baselineScreenshotPath);
+    console.log(`Baseline screenshot captured for ${page.name}: ${baselineScreenshotPath}`);
+  }
+}
+
+captureBaselines();
